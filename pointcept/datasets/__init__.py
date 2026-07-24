@@ -9,6 +9,7 @@ from .utils import point_collate_fn, collate_fn
 
 # indoor scene
 from .s3dis import S3DISDataset
+from .toronto3d import Toronto3DDataset
 from .scannet import (
     ScanNetDataset,
     ScanNet200Dataset,

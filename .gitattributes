@@ -1,0 +1,2 @@
+exp/toronto3d/ptv3-toronto3d/model/model_best.pth filter=lfs diff=lfs merge=lfs -text
+exp/toronto3d/spunet-toronto3d/model/model_best.pth filter=lfs diff=lfs merge=lfs -text
