@@ -1,0 +1,247 @@
+[2026-07-22 09:23:54,788 INFO test.py line 47 3405] => Loading config ...
+[2026-07-22 09:23:54,788 INFO test.py line 52 3405] Save path: exp/toronto3d/spunet-toronto3d
+[2026-07-22 09:23:55,330 INFO test.py line 53 3405] Config:
+weight = 'exp/toronto3d/spunet-toronto3d/model/model_best.pth'
+resume = False
+evaluate = True
+test_only = False
+seed = 54250325
+save_path = 'exp/toronto3d/spunet-toronto3d'
+num_worker = 28
+batch_size = 6
+gradient_accumulation_steps = 1
+batch_size_val = None
+batch_size_test = None
+epoch = 10000
+eval_epoch = 100
+clip_grad = None
+sync_bn = False
+enable_amp = True
+amp_dtype = 'float16'
+empty_cache = False
+empty_cache_per_epoch = False
+find_unused_parameters = False
+enable_wandb = False
+wandb_project = 'pointcept'
+wandb_key = None
+mix_prob = 0.8
+param_dicts = None
+hooks = [
+    dict(type='CheckpointLoader'),
+    dict(type='ModelHook'),
+    dict(type='IterationTimer', warmup_iter=2),
+    dict(type='InformationWriter'),
+    dict(type='SemSegEvaluator'),
+    dict(type='CheckpointSaver', save_freq=None),
+    dict(type='PreciseEvaluator', test_last=False)
+]
+train = dict(type='DefaultTrainer')
+test = dict(type='SemSegTester', verbose=True)
+model = dict(
+    type='DefaultSegmentor',
+    backbone=dict(
+        type='SpUNet-v1m1',
+        in_channels=7,
+        num_classes=8,
+        channels=(32, 64, 128, 256, 256, 128, 96, 96),
+        layers=(2, 3, 4, 6, 2, 2, 2, 2)),
+    criteria=[
+        dict(type='CrossEntropyLoss', loss_weight=1.0, ignore_index=-1),
+        dict(
+            type='LovaszLoss',
+            mode='multiclass',
+            loss_weight=1.0,
+            ignore_index=-1)
+    ])
+optimizer = dict(type='AdamW', lr=0.006, weight_decay=0.05)
+scheduler = dict(
+    type='OneCycleLR',
+    max_lr=0.006,
+    pct_start=0.05,
+    anneal_strategy='cos',
+    div_factor=10.0,
+    final_div_factor=1000.0)
+dataset_type = 'Toronto3DDataset'
+data_root = 'data/toronto3d'
+grid_size = 0.05
+data = dict(
+    num_classes=8,
+    ignore_index=-1,
+    names=[
+        'road', 'road_marking', 'natural', 'building', 'utility_line', 'pole',
+        'car', 'fence'
+    ],
+    train=dict(
+        type='Toronto3DDataset',
+        split='train',
+        data_root='data/toronto3d',
+        transform=[
+            dict(type='CenterShift', apply_z=True),
+            dict(
+                type='RandomDropout',
+                dropout_ratio=0.2,
+                dropout_application_ratio=0.2),
+            dict(
+                type='RandomRotate',
+                angle=[-1, 1],
+                axis='z',
+                center=[0, 0, 0],
+                p=0.5),
+            dict(
+                type='RandomRotate',
+                angle=[-0.015625, 0.015625],
+                axis='x',
+                p=0.5),
+            dict(
+                type='RandomRotate',
+                angle=[-0.015625, 0.015625],
+                axis='y',
+                p=0.5),
+            dict(type='RandomScale', scale=[0.9, 1.1]),
+            dict(type='RandomFlip', p=0.5),
+            dict(type='RandomJitter', sigma=0.005, clip=0.02),
+            dict(type='ChromaticAutoContrast', p=0.2, blend_factor=None),
+            dict(type='ChromaticTranslation', p=0.95, ratio=0.05),
+            dict(type='ChromaticJitter', p=0.95, std=0.05),
+            dict(
+                type='GridSample',
+                grid_size=0.05,
+                hash_type='fnv',
+                mode='train',
+                return_grid_coord=True),
+            dict(type='SphereCrop', point_max=120000, mode='random'),
+            dict(type='CenterShift', apply_z=False),
+            dict(type='NormalizeColor'),
+            dict(type='ToTensor'),
+            dict(
+                type='Collect',
+                keys=('coord', 'grid_coord', 'segment'),
+                feat_keys=('coord', 'color', 'strength'))
+        ],
+        test_mode=False,
+        loop=100),
+    val=dict(
+        type='Toronto3DDataset',
+        split='val',
+        data_root='data/toronto3d',
+        transform=[
+            dict(type='CenterShift', apply_z=True),
+            dict(type='Copy', keys_dict=dict(segment='origin_segment')),
+            dict(
+                type='GridSample',
+                grid_size=0.05,
+                hash_type='fnv',
+                mode='train',
+                return_grid_coord=True,
+                return_inverse=True),
+            dict(type='CenterShift', apply_z=False),
+            dict(type='NormalizeColor'),
+            dict(type='ToTensor'),
+            dict(
+                type='Collect',
+                keys=('coord', 'grid_coord', 'segment', 'origin_segment',
+                      'inverse'),
+                feat_keys=('coord', 'color', 'strength'))
+        ],
+        test_mode=False),
+    test=dict(
+        type='Toronto3DDataset',
+        split='test',
+        data_root='data/toronto3d',
+        transform=[
+            dict(type='CenterShift', apply_z=True),
+            dict(type='NormalizeColor')
+        ],
+        test_mode=True,
+        test_cfg=dict(
+            voxelize=dict(
+                type='GridSample',
+                grid_size=0.05,
+                hash_type='fnv',
+                mode='test',
+                return_grid_coord=True),
+            crop=None,
+            post_transform=[
+                dict(type='CenterShift', apply_z=False),
+                dict(type='ToTensor'),
+                dict(
+                    type='Collect',
+                    keys=('coord', 'grid_coord', 'index'),
+                    feat_keys=('coord', 'color', 'strength'))
+            ],
+            aug_transform=[[{
+                'type': 'RandomScale',
+                'scale': [0.9, 0.9]
+            }], [{
+                'type': 'RandomScale',
+                'scale': [0.95, 0.95]
+            }], [{
+                'type': 'RandomScale',
+                'scale': [1, 1]
+            }], [{
+                'type': 'RandomScale',
+                'scale': [1.05, 1.05]
+            }], [{
+                'type': 'RandomScale',
+                'scale': [1.1, 1.1]
+            }],
+                           [{
+                               'type': 'RandomScale',
+                               'scale': [0.9, 0.9]
+                           }, {
+                               'type': 'RandomFlip',
+                               'p': 1
+                           }],
+                           [{
+                               'type': 'RandomScale',
+                               'scale': [0.95, 0.95]
+                           }, {
+                               'type': 'RandomFlip',
+                               'p': 1
+                           }],
+                           [{
+                               'type': 'RandomScale',
+                               'scale': [1, 1]
+                           }, {
+                               'type': 'RandomFlip',
+                               'p': 1
+                           }],
+                           [{
+                               'type': 'RandomScale',
+                               'scale': [1.05, 1.05]
+                           }, {
+                               'type': 'RandomFlip',
+                               'p': 1
+                           }],
+                           [{
+                               'type': 'RandomScale',
+                               'scale': [1.1, 1.1]
+                           }, {
+                               'type': 'RandomFlip',
+                               'p': 1
+                           }]])))
+num_worker_per_gpu = 28
+batch_size_per_gpu = 6
+batch_size_val_per_gpu = 1
+batch_size_test_per_gpu = 1
+
+[2026-07-22 09:23:55,330 INFO test.py line 55 3405] => Building model ...
+[2026-07-22 09:23:55,771 INFO test.py line 68 3405] Num params: 39160680
+[2026-07-22 09:23:56,419 INFO test.py line 75 3405] Loading weight at: exp/toronto3d/spunet-toronto3d/model/model_best.pth
+[2026-07-22 09:23:59,053 INFO test.py line 87 3405] => Loaded weight 'exp/toronto3d/spunet-toronto3d/model/model_best.pth' (epoch 75)
+[2026-07-22 09:23:59,054 INFO test.py line 60 3405] => Building test dataset & dataloader ...
+[2026-07-22 09:23:59,054 INFO defaults.py line 77 3405] Totally 1 x 1 samples in toronto3d test set.
+[2026-07-22 09:23:59,055 INFO test.py line 126 3405] >>>>>>>>>>>>>>>> Start Evaluation >>>>>>>>>>>>>>>>
+[2026-07-22 09:25:45,784 INFO test.py line 176 3405] 1/1: L002, loaded pred and label.
+[2026-07-22 09:25:45,865 INFO test.py line 294 3405] Test: L002 [1/1]-2687765 Batch 0.081 (0.081) Accuracy 0.9708 (0.8570) mIoU 0.7986 (0.7986)
+[2026-07-22 09:25:46,031 INFO test.py line 311 3405] Syncing ...
+[2026-07-22 09:25:46,031 INFO test.py line 339 3405] Val result: mIoU/mAcc/allAcc 0.7986/0.8570/0.9708
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_0 - road Result: iou/accuracy 0.9658/0.9854
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_1 - road_marking Result: iou/accuracy 0.5997/0.6815
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_2 - natural Result: iou/accuracy 0.9674/0.9852
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_3 - building Result: iou/accuracy 0.9163/0.9557
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_4 - utility_line Result: iou/accuracy 0.8388/0.8611
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_5 - pole Result: iou/accuracy 0.8069/0.8754
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_6 - car Result: iou/accuracy 0.9003/0.9579
+[2026-07-22 09:25:46,032 INFO test.py line 345 3405] Class_7 - fence Result: iou/accuracy 0.3937/0.5534
+[2026-07-22 09:25:46,032 INFO test.py line 353 3405] <<<<<<<<<<<<<<<<< End Evaluation <<<<<<<<<<<<<<<<<
