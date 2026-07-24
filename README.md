@@ -60,8 +60,8 @@ Requires an **NVIDIA GPU with compute capability ≥ 8.0** (Ampere/Ada — PTv3 
 # install git-lfs if needed (no sudo required):
 conda install -n base -c conda-forge git-lfs -y && git lfs install
 
-git clone https://github.com/DeveloperAkansh26/Pointcept-Torronto3d-Benchmarking.git
-cd Pointcept-Torronto3d-Benchmarking
+git clone https://github.com/DeveloperAkansh26/Pointcept-Toronto3d-Benchmarking.git
+cd Pointcept-Toronto3d-Benchmarking
 git lfs pull                                  # fetches the two model_best.pth (~1 GB)
 ls -lh exp/toronto3d/*/model/model_best.pth   # should be ~450–550 MB each
 ```
@@ -201,8 +201,8 @@ training run already performs this once; re-run only to re-evaluate.
 | `model_last.pth` (final epoch, for resuming training) | **GitHub Release `v1.0-toronto3d`** | download links below |
 
 Release assets (free, not in the clone — download separately if you want to resume training):
-- **PTv3:** https://github.com/DeveloperAkansh26/Pointcept-Torronto3d-Benchmarking/releases/download/v1.0-toronto3d/ptv3_model_last.pth
-- **SpUNet:** https://github.com/DeveloperAkansh26/Pointcept-Torronto3d-Benchmarking/releases/download/v1.0-toronto3d/spunet_model_last.pth
+- **PTv3:** https://github.com/DeveloperAkansh26/Pointcept-Toronto3d-Benchmarking/releases/download/v1.0-toronto3d/ptv3_model_last.pth
+- **SpUNet:** https://github.com/DeveloperAkansh26/Pointcept-Toronto3d-Benchmarking/releases/download/v1.0-toronto3d/spunet_model_last.pth
 
 ---
 
